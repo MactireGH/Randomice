@@ -4,26 +4,29 @@ from core.mathfunc import randomize_animals, calculate_mean, calculate_std_devia
 
 
 def get_user_input(elements):
-    """Функция для считывания и валидации введённых значений."""
-
     animals_count = int(elements['animals_count'].get())
-    animals_group = int(elements['animals_group'].get())
+    animals_per_group = int(elements['animals_group'].get())
+
+    if animals_count <= 0 or animals_per_group <= 0:
+        messagebox.showerror("Неверный ввод", "Все значения должны быть положительными!")
+        return None
 
     if elements['is_use_deviation'].get():
         deviation = float(elements['deviation'].get())
-
         if deviation < 0:
             messagebox.showerror("Неверный ввод", "Отклонение не может быть отрицательным!")
             return None
     else:
         deviation = None
 
-    if animals_group > animals_count:
-        if animals_count <= 0 or animals_group <= 0 or animals_count:
-            messagebox.showerror('Неверный ввод','Все значения должны быть положительными!')
-        messagebox.showerror('Неверный ввод', 'Количество групп, не может быть больше количества животных!')
+    # Вычисляем, сколько ПОЛНЫХ групп можно сделать
+    animals_group = animals_count // animals_per_group
 
-    return animals_count, animals_group, deviation
+    if animals_group == 0:
+        messagebox.showerror("Ошибка", "Недостаточно животных для одной полной группы.")
+        return None
+
+    return animals_group * animals_per_group, animals_group, deviation  # отрезаем лишних животных
 
 
 def get_individual_masses(animals_count: int):
@@ -44,9 +47,7 @@ def get_individual_masses(animals_count: int):
     return animals
 
 
-def get_user_output(groups, elements):
-    """Функция для вывода сформированных групп в правый блок."""
-
+def get_user_output(groups, elements, excluded=None):
     elements['output_text'].delete(1.0, tk.END)
 
     for i, group in enumerate(groups):
@@ -58,17 +59,24 @@ def get_user_output(groups, elements):
         group_masses = [m for _, m in group]
         std_dev = calculate_std_deviation(group_masses)
         mean_mass = calculate_mean(group_masses)
+
         if elements['is_use_deviation'].get():
             elements['output_text'].insert(tk.END, f"  Средняя масса: {mean_mass:.2f} г, Стандартное отклонение: {std_dev / mean_mass * 100:.2f}%\n\n")
         else:
             elements['output_text'].insert(tk.END, f"  Средняя масса: {mean_mass:.2f} г\n\n")
 
-        # Проверка стандартного отклонения между группами
-        if elements['is_use_deviation'].get():
-            group_means = [calculate_mean([m for _, m in group]) for group in groups]
-            overall_std_dev = calculate_std_deviation(group_means)
-            overall_mean = calculate_mean(group_means)
-            elements['output_text'].insert(tk.END, f"Стандартное отклонение между группами: {overall_std_dev / overall_mean * 100:.2f}%\n")
+    # Межгрупповое отклонение
+    if elements['is_use_deviation'].get():
+        group_means = [calculate_mean([m for _, m in group]) for group in groups if group]
+        overall_std_dev = calculate_std_deviation(group_means)
+        overall_mean = calculate_mean(group_means)
+        elements['output_text'].insert(tk.END, f"Стандартное отклонение между группами: {overall_std_dev / overall_mean * 100:.2f}%\n\n")
+
+    # Вывод исключённых животных
+    if excluded:
+        elements['output_text'].insert(tk.END, "Исключённые животные (не вписались в стандартное отклонение):\n")
+        for animal in excluded:
+            elements['output_text'].insert(tk.END, f"  {animal[0]} (масса: {animal[1]} г)\n")
 
 def processing(elements):
     result = get_user_input(elements)
@@ -80,6 +88,6 @@ def processing(elements):
     animals = get_individual_masses(animals_count)
 
     # передаём deviation как есть
-    groups = randomize_animals(animals, deviation, animals_group)
-    get_user_output(groups, elements)
+    groups, excluded = randomize_animals(animals, deviation, animals_group)
+    get_user_output(groups, elements, excluded)
 

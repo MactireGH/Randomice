@@ -38,39 +38,63 @@ def randomize_animals(animals, max_std_dev=None, group_size=None):
     rd.shuffle(animals)
 
     if max_std_dev is None:
-        # Простое равномерное распределение по группам
-        return split_evenly(animals, group_size)
+        return split_evenly(animals, group_size), []
 
     best_groups = None
+    best_excluded = None
     best_score = float('inf')
 
-    for _ in range(1000):  # пробуем 1000 рандомных перестановок
+    for _ in range(1000):  # пробуем 1000 перестановок
         rd.shuffle(animals)
-        groups = split_evenly(animals, group_size)
 
-        # Проверим, все ли группы удовлетворяют стандартному отклонению
-        valid = True
-        for group in groups:
-            masses = [mass for _, mass in group]
-            if not is_within_std_dev_limit([], 0, max_std_dev=max_std_dev) or len(masses) <= 1:
-                continue
-            std_dev = calculate_std_deviation(masses)
-            mean = calculate_mean(masses)
-            if std_dev / mean > max_std_dev:
-                valid = False
-                break
+        groups = [[] for _ in range(group_size)]
+        group_masses = [[] for _ in range(group_size)]
+        excluded = []
 
-        if not valid:
-            continue
+        for animal in animals:
+            placed = False
+            for i in range(group_size):
+                if len(groups[i]) >= len(animals) // group_size:
+                    continue
 
-        # Считаем межгрупповое отклонение
-        group_means = [calculate_mean([m for _, m in g]) for g in groups]
-        overall_std = calculate_std_deviation(group_means)
+                new_masses = group_masses[i] + [animal[1]]
+                mean = calculate_mean(new_masses)
+                std = calculate_std_deviation(new_masses)
+
+                if mean == 0 or std / mean <= max_std_dev:
+                    groups[i].append(animal)
+                    group_masses[i].append(animal[1])
+                    placed = True
+                    break
+
+            if not placed:
+                excluded.append(animal)
+
+        # Проверка межгруппового отклонения
+        group_means = [calculate_mean(gm) for gm in group_masses if gm]
         overall_mean = calculate_mean(group_means)
-        score = overall_std / overall_mean  # чем меньше, тем лучше
+        overall_std = calculate_std_deviation(group_means)
 
+        if overall_mean == 0 or overall_std / overall_mean > max_std_dev:
+            continue  # отклоняем вариант
+
+        # Выбираем лучший (с наименьшим межгрупповым отклонением)
+        score = overall_std / overall_mean
         if score < best_score:
             best_score = score
             best_groups = groups
+            best_excluded = excluded
 
-    return best_groups if best_groups else split_evenly(animals, group_size)
+        # Удаляем неполные группы
+        final_groups = []
+        final_excluded = best_excluded.copy() if best_excluded else []
+
+        for group in best_groups:
+            if len(group) < len(animals) // group_size:
+                final_excluded.extend(group)
+            else:
+                final_groups.append(group)
+
+        return final_groups, final_excluded
+
+    return best_groups if best_groups else [], best_excluded if best_excluded else animals

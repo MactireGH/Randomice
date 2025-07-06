@@ -11,7 +11,7 @@ def get_create_about_tab(surface):
 
     # Заголовок и версия
     ttk.Label(frame, text="Randomice", font=("Arial", 14, "bold")).pack(pady=(10, 0))
-    ttk.Label(frame, text="Версия: 0.1 (2025)", font=("Arial", 10)).pack()
+    ttk.Label(frame, text="Версия: 1.0 (2025)", font=("Arial", 10)).pack()
 
     # Авторы
     ttk.Label(frame, text="Авторы: Никита Золотарёв, Юлия Вечерская").pack(pady=2)
