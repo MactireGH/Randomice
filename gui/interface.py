@@ -1,5 +1,7 @@
 import tkinter as tk
+
 from tkinter import ttk
+from gui.maintab import get_create_main_tab
 
 def run_app():
     """Функция для сборки пользовательского интерфейса."""
@@ -11,7 +13,7 @@ def run_app():
     notebook = ttk.Notebook(root)
     notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
-    label = ttk.Label(notebook, text="Добро пожаловать в Randomice!", font=("Segoe UI", 14))
-    label.pack(pady=30)
+    main_tab, elements = get_create_main_tab(notebook)
+    notebook.add(main_tab, text='Главная')
 
     root.mainloop()
